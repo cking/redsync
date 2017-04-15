@@ -122,7 +122,10 @@ var deleteScript = redis.NewScript(`
 
 func (m *Mutex) release(conn *redis.Client, value string) bool {
 	status, err := deleteScript.Run(conn, []string{m.name}, value).Result()
-	return err == nil && status.(string) != "0"
+	if _, ok := status.(int64); err != nil || !ok {
+		return false
+	}
+	return true
 }
 
 var touchScript = redis.NewScript(`

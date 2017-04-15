@@ -106,7 +106,7 @@ func getPoolValues(pools []*redis.Client, name string) []string {
 	values := []string{}
 	for _, conn := range pools {
 		value, err := conn.Get(name).Result()
-		if err != nil /*&& err != redis.ErrNil*/ {
+		if err != nil && err != redis.Nil {
 			panic(err)
 		}
 		values = append(values, value)
@@ -118,7 +118,7 @@ func getPoolExpiries(pools []*redis.Client, name string) []time.Duration {
 	expiries := []time.Duration{}
 	for _, conn := range pools {
 		expiry, err := conn.PTTL(name).Result()
-		if err != nil /* TODO: && err != redis.ErrNil*/ {
+		if err != nil && err != redis.Nil {
 			panic(err)
 		}
 		expiries = append(expiries, expiry)
