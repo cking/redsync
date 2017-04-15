@@ -1,8 +1,8 @@
 package redsync
 
-import "github.com/garyburd/redigo/redis"
+import redis "gopkg.in/redis.v5"
 
 // A Pool maintains a pool of Redis connections.
 type Pool interface {
-	Get() redis.Conn
+	Get() *redis.Client
 }

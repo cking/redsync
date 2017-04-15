@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"gopkg.in/redis.v5"
 )
 
 // A Mutex is a distributed mutual exclusion lock.
@@ -43,7 +43,7 @@ func (m *Mutex) Lock() error {
 		if i != 0 {
 			time.Sleep(m.delay)
 		}
-		
+
 		start := time.Now()
 
 		n := 0
@@ -110,11 +110,11 @@ func (m *Mutex) genValue() (string, error) {
 func (m *Mutex) acquire(pool Pool, value string) bool {
 	conn := pool.Get()
 	defer conn.Close()
-	reply, err := redis.String(conn.Do("SET", m.name, value, "NX", "PX", int(m.expiry/time.Millisecond)))
-	return err == nil && reply == "OK"
+	reply, err := conn.SetNX(m.name, value, m.expiry).Result()
+	return err == nil && reply
 }
 
-var deleteScript = redis.NewScript(1, `
+var deleteScript = redis.NewScript(`
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
 		return redis.call("DEL", KEYS[1])
 	else
@@ -125,11 +125,11 @@ var deleteScript = redis.NewScript(1, `
 func (m *Mutex) release(pool Pool, value string) bool {
 	conn := pool.Get()
 	defer conn.Close()
-	status, err := deleteScript.Do(conn, m.name, value)
-	return err == nil && status != 0
+	status, err := deleteScript.Run(conn, []string{m.name}, value).Result()
+	return err == nil && status.(string) != "0"
 }
 
-var touchScript = redis.NewScript(1, `
+var touchScript = redis.NewScript(`
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
 		return redis.call("SET", KEYS[1], ARGV[1], "XX", "PX", ARGV[2])
 	else
@@ -140,6 +140,7 @@ var touchScript = redis.NewScript(1, `
 func (m *Mutex) touch(pool Pool, value string, expiry int) bool {
 	conn := pool.Get()
 	defer conn.Close()
-	status, err := redis.String(touchScript.Do(conn, m.name, value, expiry))
+	rawStatus, err := touchScript.Run(conn, []string{m.name}, value, expiry).Result()
+	status := rawStatus.(string)
 	return err == nil && status != "ERR"
 }
