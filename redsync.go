@@ -1,16 +1,20 @@
 package redsync
 
-import "time"
+import (
+	"time"
+
+	redis "gopkg.in/redis.v5"
+)
 
 // Redsync provides a simple method for creating distributed mutexes using multiple Redis connection pools.
 type Redsync struct {
-	pools []Pool
+	pools []*redis.Client
 }
 
 // New creates and returns a new Redsync instance from given Redis connection pools.
-func New(pools []Pool) *Redsync {
+func New(conns []*redis.Client) *Redsync {
 	return &Redsync{
-		pools: pools,
+		pools: conns,
 	}
 }
 
